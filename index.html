@@ -16,7 +16,7 @@
   --bg:#f3f3f0; --card:#fff; --ink:#151515; --sub:#75756f; --line:#e6e5e0;
   --brand:#151515; --brand2:#ee7d12; --acc-ink:#c2620a; --soft:#fff0dc; --gray:#f2f2ee;
   --green:#3aa845; --lav:#a596dc;
-  --r-wait:#9a9a93; --r-ok:#2f9e44; --r-hold:#8672d2; --r-no:#d9534f;
+  --r-wait:#ee7d12; --r-done:#55554f; --r-ok:#2f9e44; --r-hold:#8672d2; --r-no:#d9534f;
 }
 *{box-sizing:border-box}
 html,body{margin:0}
@@ -73,14 +73,14 @@ main{max-width:1500px;margin:0 auto;padding:18px 16px 60px}
 .item:hover{border-color:#cfcec7;box-shadow:0 2px 8px rgba(0,0,0,.06)}
 .item[data-r="등록"]{border-left-color:var(--r-ok)}
 .item[data-r="보류"]{border-left-color:var(--r-hold)}
-.item[data-r="미등록"]{border-left-color:var(--r-no)}
+.item[data-r="완료"]{border-left-color:var(--r-done)}
 .i-top{display:flex;align-items:center;gap:7px}
 .i-time{font-weight:900;font-variant-numeric:tabular-nums;color:var(--ink)}
 .i-name{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
-.badge{flex:none;font-size:11.5px;font-weight:700;padding:2px 7px;border-radius:999px;background:#efefeb;color:#77776f}
+.badge{flex:none;font-size:11.5px;font-weight:700;padding:2px 7px;border-radius:999px;background:var(--soft);color:var(--acc-ink)}
 .badge[data-r="등록"]{background:#e2f4e4;color:#23803a}
 .badge[data-r="보류"]{background:#ece8fa;color:#6450b5}
-.badge[data-r="미등록"]{background:#fbe6e4;color:#c4453c}
+.badge[data-r="완료"]{background:#e7e7e2;color:#3d3d38}
 .i-sub{font-size:13px;color:var(--sub);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .i-tel{display:inline-block;font-size:13px;color:var(--acc-ink);text-decoration:none;font-variant-numeric:tabular-nums;margin-top:2px}
 .i-note{font-size:12.5px;color:#55554f;background:#f6f6f2;border-radius:6px;padding:4px 7px;margin-top:5px;white-space:pre-wrap;word-break:break-word}
@@ -161,7 +161,8 @@ textarea{resize:vertical;min-height:64px}
 .seg button.on{background:var(--brand);border-color:var(--brand);color:#fff}
 .seg button.on[data-r="등록"]{background:var(--r-ok);border-color:var(--r-ok)}
 .seg button.on[data-r="보류"]{background:var(--r-hold);border-color:var(--r-hold)}
-.seg button.on[data-r="미등록"]{background:var(--r-no);border-color:var(--r-no)}
+.seg button.on[data-r="완료"]{background:var(--r-done);border-color:var(--r-done)}
+.seg button.on[data-r="예정"]{background:var(--r-wait);border-color:var(--r-wait)}
 .acts{display:flex;gap:8px;margin-top:14px}
 .acts button{height:48px;border-radius:12px;border:0;font-weight:700;padding:0 16px}
 .b-del{background:#fbe6e4;color:#c4453c}
@@ -222,9 +223,9 @@ textarea{resize:vertical;min-height:64px}
     <label style="margin-bottom:0">상담 결과</label>
     <div class="seg" id="seg">
       <button type="button" data-r="예정">예정</button>
+      <button type="button" data-r="완료">완료</button>
       <button type="button" data-r="등록">등록</button>
       <button type="button" data-r="보류">보류</button>
-      <button type="button" data-r="미등록">미등록</button>
     </div>
     <div class="err" id="formErr"></div>
     <div class="acts">
@@ -266,7 +267,7 @@ function sampleData(){
     mk(2, null, '16:30', '예시 이서아', '초1', '○○초등학교', '', '예정'),
     mk(3, 0, '15:00', '예시 박도윤', '6세', '○○어린이집', '레벨테스트 희망', '등록'),
     mk(4, 2, '17:00', '예시 최지우', '초2', '○○초등학교', '시간대 조율 필요', '보류'),
-    mk(5, 4, '11:00', '예시 정시우', '7세', '○○유치원', '', '미등록'),
+    mk(5, 4, '11:00', '예시 정시우', '7세', '○○유치원', '', '완료'),
     mk(6, 8, '15:30', '예시 한유나', '초1', '○○초등학교', '', '예정')
   ];
 }
@@ -338,7 +339,7 @@ async function load(){
     const ms = addDays(state.month, -7), me = addDays(new Date(state.month.getFullYear(), state.month.getMonth()+1, 0), 7);
     const ws = addDays(state.anchor, -7), we = addDays(state.anchor, 20);
     const r = await api('list', { from: ymd(ms < ws ? ms : ws), to: ymd(me > we ? me : we) });
-    state.items = r.items || [];
+    state.items = (r.items || []).map(x => { if (x.result === '미등록') x.result = '완료'; if (!x.result) x.result = '예정'; return x; });
     const n = new Date();
     $('sync').textContent = pad(n.getHours()) + ':' + pad(n.getMinutes()) + ' 동기화';
     render();
@@ -369,12 +370,12 @@ function cardHtml(x){
 }
 
 function summary(list){
-  const c = { '예정':0, '등록':0, '보류':0, '미등록':0 };
+  const c = { '예정':0, '완료':0, '등록':0, '보류':0 };
   list.forEach(x => { const r = x.result || '예정'; if (c[r] != null) c[r]++; });
   return c;
 }
 function statsHtml(c){
-  return '<div class="stats">' + ['등록','보류','미등록','예정'].map(r => '<span class="badge" data-r="' + r + '">' + r + ' ' + c[r] + '</span>').join('') + '</div>';
+  return '<div class="stats">' + ['예정','완료','등록','보류'].map(r => '<span class="badge" data-r="' + r + '">' + r + ' ' + c[r] + '</span>').join('') + '</div>';
 }
 const hourLabel = h => (h < 12 ? '오전 ' + h : '오후 ' + (h === 12 ? 12 : h - 12)) + '시';
 
